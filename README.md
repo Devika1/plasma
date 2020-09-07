@@ -7,6 +7,7 @@
 * _Trimming to specific length_
 
 `fastx_trimmer -l 145 -i <SAMPLE_PAIRED_R1.fastq> -o <SAMPLE_TRIMMED_R1.fastq>`
+
 `fastx_trimmer -l 145 -i <SAMPLE_PAIRED_R2.fastq> -o <SAMPLE_TRIMMED_R2.fastq>`
 
 * _Alignment_
