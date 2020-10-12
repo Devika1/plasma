@@ -30,7 +30,7 @@
 
 * _Filtering somatic calls from Varscan2_
 
-`awk '{ if(0 >= 5 &&  == 0 &&  +  >= 10 &&  + 0 >= 10 && 8 >= 2 && 9 >= 2) { print  }}' <SAMPLE.vcf.snp> | grep -i somatic > <SAMPLE.filtered.vcf.snp>`
+`awk '{if(0 >= 5 &&  == 0 &&  +  >= 10 &&  + 0 >= 10 && 8 >= 2 && 9 >= 2) {print $0}}' <SAMPLE.vcf.snp> | grep -i somatic > <SAMPLE.filtered.vcf.snp>`
 
 * _Extraction of shared variants (i.e. variants shared between plasma and tumour)_
 
@@ -50,6 +50,6 @@ These reads were extracted using JAPSA (https://github.com/mdcao/japsa) and soma
 
 **4. Annotation of variants with Annovar**
 
-`awk '{print ,,,,}' <SAMPLE.filtered.vcf.snp> > <SAMPLE.annovarlist.txt>`
+`awk '{print $1,$2,$2,$3,$4 }' <SAMPLE.filtered.vcf.snp> > <SAMPLE.annovarlist.txt>`
 
 `annotate_variation.pl -out <SAMPLE.annotation> -build hg19 <SAMPLE.annovarlist.txt> <DIRECTORY_PATH_TO_humandb_hg19>`
