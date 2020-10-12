@@ -30,7 +30,7 @@
 
 * _Filtering somatic calls from Varscan2_
 
-`awk '{if(0 >= 5 &&  == 0 &&  +  >= 10 &&  + 0 >= 10 && 8 >= 2 && 9 >= 2) {print $0}}' <SAMPLE.vcf.snp> | grep -i somatic > <SAMPLE.filtered.vcf.snp>`
+`awk '{if($10 >= 5 && $6 == 0 && $5 + $6 >= 10 && $9 + $10 >= 10 && $18 >=2 && $19 >=2) {print $0}}' <SAMPLE.vcf.snp> | grep -i somatic > <SAMPLE.filtered.vcf.snp>`
 
 * _Extraction of shared variants (i.e. variants shared between plasma and tumour)_
 
