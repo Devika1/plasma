@@ -34,11 +34,11 @@
 
 * _Extraction of shared variants (i.e. variants shared between plasma and tumour)_
 
-`awk 'FNR==NR{a[,]=;next}{if(b=a[,]){print b}}' <SAMPLE_PLASMA.filtered.vcf.snp> <SAMPLE_TUMOUR.filtered.vcf.snp>  > <SAMPLE_PLASMA.shared.vcf.snp>`
+`awk 'FNR==NR{a[$1,$2]=$0;next}{if(b=a[$1,$2]){print}}'' <SAMPLE_TUMOUR.filtered.vcf.snp> <SAMPLE_PLASMA.filtered.vcf.snp> > <SAMPLE_PLASMA.shared.vcf.snp>`
 
 * _Extraction of unique variants (i.e. variants not shared between plasma and tumour)_
 
-`awk 'FNR==NR{a[,]++}FNR!=NR && !a[,]{print}' <SAMPLE_PLASMA.filtered.vcf.snp> <SAMPLE_TUMOUR.filtered.vcf.snp>  > <SAMPLE_PLASMA.unique.vcf.snp>`
+`awk 'FNR==NR{a[$1,$2]++}FNR!=NR && !a[$1,$2]{print}' <SAMPLE_TUMOUR.filtered.vcf.snp> <SAMPLE_PLASMA.filtered.vcf.snp> > <SAMPLE_PLASMA.unique.vcf.snp>`
 
 **3. Extraction of somatic reads**
 
