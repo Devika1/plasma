@@ -1,116 +1,137 @@
+.libPaths("C:/Users/LCOIN/R-4.0.2/library")
+
 library('jsonlite');
-RHOME="../R"
+library('ggplot2')
+library(tidyr)
+library(reshape2)
+RHOME="../../R"
+setwd("../data/new_samples")
 source(paste(RHOME, "plotPlasmaFuncs.R", sep="/"));
 
+names = c("1524", "1249", "1494", "1084","065", "098");
 
-names = c("1524", "1249", "1494", "609", "616");
-
-
-
-
-#x = 2:1999
 x = 2:1999
-P0 = readDataAll(names[1:3], '_P0_read_length_count.json', x)
-shared = readDataAll(names[1:3], '_P0_shared_read_length_count.json', x)
-unique = readDataAll(names[1:3], '_P0_unique_read_length_count.json', x)
-mergedT = readDataAll(names[1:3], '_P0_merged_read_length_count.json', x)
-P01 = readDataAll(names[4:5], '_P0_read_length_count.json', x)
-merged = readDataAll(names[4:5], '_P0_merged_read_length_count.json', x)
-P0_d = apply(P0, 2, makeDensity)
-shared_d = apply(shared, 2, makeDensity)
-unique_d = apply(unique, 2, makeDensity)
-P01_d = apply(P01, 2, makeDensity)
-merged_d = apply(merged,2,makeDensity)
-merged_Td = apply(mergedT,2,makeDensity)
+P0 = readDataAll(names[1:4], '_P0_read_length_count.json', x)
+shared = readDataAll(names[1:4], '_P0.shared.somatic_reads_read_length_count.json', x) 
+unique = readDataAll(names[1:4], '_P0.unique.somatic_reads_read_length_count.json', x)
 
-li = list("Tumour_all" = P0_d[,4,drop=F], "Tumour_uniq" = unique_d[,4,drop=F], "Tumour_shared" = shared_d[,4,drop=F], "Benign_all" = P01_d[,3,drop=F], "Benign_filtered" = merged_d[,3,drop=F], "Tumour_filtered" = merged_Td[,4,drop=F])
+.cumsum1<-function(x) sum(x) -cumsum(x)
 
-#li = list(unique_d = unique_d[,4,drop=F],shared_d = shared_d[,4,drop=F])
-resdir = "res"
-dir.create(resdir)
-pdf(paste(resdir,"out.pdf",sep="/"))
-plotAll1(x, li, n=1, log = "", inds = 1:500, func=cumsum)
-plotAll1(x, li, n=1, log = "y", inds = 1:1998, func=cumsum1)
-plotAll1(x, li, n=20, log = "", inds = 1:1998, func=ident)
-plotAll1(x, li, n=20, log = "x", inds = 1:1998, func=ident)
+P0_c = data.frame(cbind(apply(P0,2,cumsum), apply(P0,2,.cumsum1)))
+shared_c = data.frame(cbind(apply(shared,2,cumsum), apply(shared,2,.cumsum1)))
+unique_c = data.frame(cbind(apply(unique,2,cumsum), apply(unique,2,.cumsum1)))
+ncol = dim(P0_c)[2]
+ratios = matrix(nrow = dim(P0_c)[1],ncol = ncol)
+for(i in 1:ncol){
+  
+  shared_c[,i] = shared_c[,i]/P0_c[,i]
+  unique_c[,i] = unique_c[,i]/P0_c[,i]
+  ratios[,i] = shared_c[,i]/unique_c[,i]
+}
+ratios = data.frame(ratios)
+names(ratios) = c(paste(names(unique),"LTE",sep="."),paste(names(unique),"GT",sep="."))
+probs =c(0.25,.5,.75)
 
-plotAll1(x, li, n=20, log = "y", inds = 1:1998, func=ident)
-plotAll1(x, li, n=20, log = "xy", inds = 1:1998, func=ident)
-dev.off()
+ratios_ = cbind(x,.addAvg(ratios, "LTE", probs  =probs),.addAvg(ratios, "GT", probs  =probs))
+#ratios = cbind(x,ratios)
+df = pivot_longer(ratios_, names_to = "ID", values_to = "proportion", cols=names(ratios)[-1])  %>% 
+  separate(ID, c('ID', 'type'), sep='\\.', remove = T)
+ratios0 = ratios_[,c(1,grep("q_25",names(ratios_)))]
+ratios1 = ratios_[,c(1,grep("q_50",names(ratios_)))]
+ratios2 = ratios_[,c(1,grep("q_75",names(ratios_)))]
 
+df0 = pivot_longer(ratios0, names_to="ID",values_to="q25",cols = names(ratios0)[-1])
+df1 = pivot_longer(ratios1, names_to="ID",values_to="q50",cols = names(ratios1)[-1])
+df2 = pivot_longer(ratios2, names_to="ID",values_to="q75",cols = names(ratios2)[-1])
+df_all = cbind(df1,df0,df2)[,c(1,2,3,6,9)]
 
+textsize=20
+ggp<-ggplot(df_all, aes(x,q50, linetype=ID))+
+  ggtitle("Ratio of shared to unique")+
+  ylab("Ratio")+
+  geom_line()+
+  geom_ribbon(aes(ymin=q25, ymax=q75, fill = ID), alpha=0.1)+
+  scale_x_continuous(trans='log10',
+                     breaks = c(2,5,10,20,50,100,200,500,1000,2000))+
+  ylim(0,0.4)+
+  theme_bw()+
+  theme(text = element_text(size=textsize))
+ggp
 
+ggsave("ratio.png", plot=ggp, width = 30, height = 30, units = "cm")
 
-thresh = 1:2000
-secondThresh = thresh - 10;
-l = plotAll(outf= NULL, thresh = thresh, lt =F , secondThresh = secondThresh, ylim = c(1e-5,1))
+ggp1 = ggplot(df, aes(x,proportion, fill=ID,color=ID, linetype=type))+
+  geom_line()+
+  scale_x_continuous(trans='log10')+
+  ggtitle("Ratio of shared to unique")+
+  theme_bw()+
+  theme(text = element_text(size=textsize))
+ggp1
 
-replot(l, xlim = c(2,1998), norm=F, smooth = 50)
+ggsave("ratio1.png", plot=ggp1, width = 30, height = 30, units = "cm")
 
+ncol1 = dim(P0)[2]
+for(i in 1:ncol1){
+  P0[,i] = P0[,i]/sum(P0[,i])
+}
 
-replot(l, xlim = c(1,2000), norm=F, smooth = 10)
-l = plotAll(outf= paste(resdir,"plots.pdf",sep="/"), thresh = thresh, lt=T, secondThresh = 0, ylim = c(1e-5,1))
-thresh = 1:200
-secondThresh = thresh - 10;
-l = plotAll(outf=paste(resdir,"plots1.pdf",sep="/"), lt=T, thresh=thresh, secondThresh = secondThresh)
+#density  = data.frame(P0)
+#density = cbind(x,density[,!(names(density) %in% "combined")])
+###DENSITY PLOTS
 
-l = plotAll(outf=NULL, lt=T, secondThresh = 20, thresh=1:200, norm=NULL, ylim = c(0,5))
-a1 = plotlines(average(l), outf = paste(resdir,"average_short_20.pdf",sep="/"))
-plotDiff(a1, l[[1]]$thresh, outf=paste(resdir,"average_diff_short_20.pdf",sep="/"))
+x = 2:1999
+P0 = readDataAll(names[1:4], '_P0_read_length_count.json', x,"Tumour_all")
+shared = readDataAll(names[1:4], '_P0.shared.somatic_reads_read_length_count.json', x,"Tumour_shared") 
+unique = readDataAll(names[1:4], '_P0.unique.somatic_reads_read_length_count.json', x, "Tumour_unique")
+P01 = readDataAll(names[5:6], '_P0_read_length_count.json', x, "Benign_all")
+merged = readDataAll(names[5:6], '_P0.somatic_reads_read_length_count.json', x, "Benign_filtered")
+mergedT = readDataAll(names[1:4], '_P0.somatic_reads_read_length_count.json', x,"Tumour_filtered")
 
+P0_d = data.frame(apply(P0, 2, makeDensity,smooth=10))
+shared_d = data.frame(apply(shared, 2, makeDensity,smooth=10))
+unique_d =data.frame( apply(unique, 2, makeDensity,smooth=10))
+P01_d = data.frame(apply(P01, 2, makeDensity,smooth=10))
+merged_d = data.frame(apply(merged,2,makeDensity,smooth=10))
+merged_Td = data.frame(apply(mergedT,2,makeDensity,smooth=10))
 
-#a1 = plotlines(l)
+.addAvg(P0_d, "", probs  =probs)
 
+l = list(Benign_all_frag = P01_d, 
+         Benign_somatic_frag = merged_d,
+         Tumour_all_frag = P0_d,
+         Tumour_somatic_frag = merged_Td,
+         Tumour_somatic_shared_frag = shared_d,
+         Tumour_somatic_uniq_frag = unique_d)
 
+l = lapply(l, .addAvg,"",probs=probs)
+.getDens<-function(x, l, nme,id_nme="ID"){
+  res = list(x=x)
+  for(i in 1:length(l)){
+    res[[i+1]] = l[[i]][,which(names(l[[i]]) %in% nme)]
+  }
+  names(res) = c("x",names(l))
+  density=data.frame(res)
+  df2 = pivot_longer(density, names_to = id_nme, values_to = nme, cols=names(density)[-1])
+  df2
+}
+density = .getDens(x,l,"X_q_50")
+q_25 = .getDens(x,l,"X_q_25", "ID")
+q_50 = .getDens(x,l,"X_q_50","ID1")
+q_75 = .getDens(x,l,"X_q_75","ID2")
 
-lGT = plotAll(outf=paste(resdir,'greaterThan.pdf',sep="/"), lt=F, secondThresh = 2000, thresh=0:2000, norm=NULL, ylim = c(0.00001,0.05))
-lLT = plotAll(outf=paste(resdir, 'lessThan.pdf',sep="/"), lt=T, secondThresh = 0, thresh=0:300, norm=NULL, ylim = c(0.00001,0.05))
-a1 = plotlines(average(l), outf = paste(resdir, "average_long.pdf",sep="/"))
-plotDiff(a1, l[[1]]$thresh, outf=paste(resdir,"average_diff_long.pdf",sep="/"))
+df2 = cbind(q_25, q_50, q_75)[,c(1,2,3,6,9)]
 
+ggp2<-ggplot(df2, aes(x, X_q_50,  fill=ID, color=ID))+
+  scale_y_continuous(trans='log10')+
+  scale_color_manual(values = c("blue", "black", "green4", "turquoise", "red", "gold4"))+
+  ggtitle("Density plot(20bp sliding window)")+
+  geom_line()+
+  theme_bw()+
+  theme(text = element_text(size=textsize))+
+  xlab("Fragment length(bp)")+
+  ylab("Density") #+
+  #geom_ribbon(aes(ymin=X_q_25, ymax=X_q_75, fill = ID),  alpha=0.1)
+ggp2
 
-a1 = plotlines(l)
-
-norm = plotAll(T, outf=paste(resdir,"normalised.pdf",sep="/"), thresh = 1:200)
-#
-
-
-l100 = plotAll(outf=NULL, lt=T, secondThresh = 20, thresh=1:200, norm=NULL, ylim = c(0,5))
-l50 = plotAll(outf=NULL, lt=T, secondThresh = 20, thresh=1:200, norm=NULL, ylim = c(0,5), targetinds = c(50,200))
-
-
-getC(l$c1524s$w,l$c1524$rates, mutrates = c(0.1, 1e-5))
-getC(l$c1524s$w,l$c1524s$rates, mutrates = c(0.1, 1e-5))
-
-getC(l$c1249s$w,l$c1249$rates, mutrates = c(0.1, 1e-5))
- getC(l$c1494s$w,l$c1494$rates, mutrates = c(0.1, 1e-5))
-
-
-w = apply(l$c1524$c[c(100,200),],2,normEnd)[1,]
-
-#w[2] = apply(l$c616$c[c(100,200),],2, normEnd)[1,1]  ##perc fragments in normal plasma lt 100bp
-#w[1] = apply(l$c1494$c[c(100,200),],2, normEnd)[1,2]  ##perc fragments in tumour plasma lt 100bp
-
-
-calcC(w,ratio(apply(l$c1524$c[c(100,200),],1,ratio)))
-
-
-100*calcC(w,ratio(apply(l$c1524$c[c(100,200),],1,ratio)))
-100*calcC(w,ratio(apply(l$c1494$c[c(100,200),],1,ratio)))
-100*calcC(w,ratio(apply(l$c1249$c[c(100,200),],1,ratio)))
-100*calcC(w,ratio(apply(l$c606$c[c(100,200),],1,ratio)))
-100*calcC(w,ratio(apply(l$c616$c[c(100,200),],1,ratio)))
-
-
-#a = calcDiff(c1249)
-#a = calcDiff(c1524)
-#a = calcDiff(c1494)
-# rat1524 = apply(c1524,1,ratio)
-# rat1494 = apply(c1494,1,ratio)
-# rat1249 = apply(c1249,1,ratio)
-#((( rat[2]) * 0.07)* (1/rat[1]))
-
-c606 = readData(ext_all='616_P0_read_length_count.json', ext_unique = '609_P0_read_length_count.json', thresh = thresh )
-
-
+ggsave("density1.png", plot=ggp2, width = 30, height = 30, units = "cm")
 
