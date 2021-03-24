@@ -1,16 +1,17 @@
-.libPaths("C:/Users/LCOIN/R-4.0.2/library")
+#.libPaths("C:/Users/LCOIN/R-4.0.2/library")
 
 library('jsonlite');
 library('ggplot2')
 library(tidyr)
 library(reshape2)
-RHOME="../../R"
-setwd("../data/new_samples")
-source(paste(RHOME, "plotPlasmaFuncs.R", sep="/"));
+#RHOME="../../R"
+#setwd("../data/new_samples")
+#source(paste(RHOME, "plotPlasmaFuncs.R", sep="/"));
 
 names = c("1524", "1249", "1494", "1084","065", "098");
 
-x = 2:1999
+#x = 2:1999
+x = -1999:1999
 P0 = readDataAll(names[1:4], '_P0_read_length_count.json', x)
 shared = readDataAll(names[1:4], '_P0.shared.somatic_reads_read_length_count.json', x) 
 unique = readDataAll(names[1:4], '_P0.unique.somatic_reads_read_length_count.json', x)
@@ -53,11 +54,10 @@ ggp<-ggplot(df_all, aes(x,q50, linetype=ID))+
   geom_ribbon(aes(ymin=q25, ymax=q75, fill = ID), alpha=0.1)+
   scale_x_continuous(trans='log10',
                      breaks = c(2,5,10,20,50,100,200,500,1000,2000))+
-  ylim(0,0.4)+
+  #ylim(0,0.4)+
   theme_bw()+
   theme(text = element_text(size=textsize))
 ggp
-
 ggsave("ratio.png", plot=ggp, width = 30, height = 30, units = "cm")
 
 ggp1 = ggplot(df, aes(x,proportion, fill=ID,color=ID, linetype=type))+
@@ -79,20 +79,22 @@ for(i in 1:ncol1){
 #density = cbind(x,density[,!(names(density) %in% "combined")])
 ###DENSITY PLOTS
 
-x = 2:1999
+#x = 2:1999
+x = -1999:1999
 P0 = readDataAll(names[1:4], '_P0_read_length_count.json', x,"Tumour_all")
-shared = readDataAll(names[1:4], '_P0.shared.somatic_reads_read_length_count.json', x,"Tumour_shared") 
+shared = readDataAll(names[1:4], '_P0.shared.somatic_reads_read_length_count.json', x,"Tumour_shared") #'_P0_shared_read_length_count.json', x)
 unique = readDataAll(names[1:4], '_P0.unique.somatic_reads_read_length_count.json', x, "Tumour_unique")
 P01 = readDataAll(names[5:6], '_P0_read_length_count.json', x, "Benign_all")
 merged = readDataAll(names[5:6], '_P0.somatic_reads_read_length_count.json', x, "Benign_filtered")
 mergedT = readDataAll(names[1:4], '_P0.somatic_reads_read_length_count.json', x,"Tumour_filtered")
 
-P0_d = data.frame(apply(P0, 2, makeDensity,smooth=10))
-shared_d = data.frame(apply(shared, 2, makeDensity,smooth=10))
-unique_d =data.frame( apply(unique, 2, makeDensity,smooth=10))
-P01_d = data.frame(apply(P01, 2, makeDensity,smooth=10))
-merged_d = data.frame(apply(merged,2,makeDensity,smooth=10))
-merged_Td = data.frame(apply(mergedT,2,makeDensity,smooth=10))
+smooth = 50
+P0_d = data.frame(apply(P0, 2, makeDensity,smooth=smooth))
+shared_d = data.frame(apply(shared, 2, makeDensity,smooth=smooth))
+unique_d =data.frame( apply(unique, 2, makeDensity,smooth=smooth))
+P01_d = data.frame(apply(P01, 2, makeDensity,smooth=smooth))
+merged_d = data.frame(apply(merged,2,makeDensity,smooth=smooth))
+merged_Td = data.frame(apply(mergedT,2,makeDensity,smooth=smooth))
 
 .addAvg(P0_d, "", probs  =probs)
 
@@ -114,24 +116,28 @@ l = lapply(l, .addAvg,"",probs=probs)
   df2 = pivot_longer(density, names_to = id_nme, values_to = nme, cols=names(density)[-1])
   df2
 }
-density = .getDens(x,l,"X_q_50")
-q_25 = .getDens(x,l,"X_q_25", "ID")
-q_50 = .getDens(x,l,"X_q_50","ID1")
-q_75 = .getDens(x,l,"X_q_75","ID2")
+
+inds = length(l):1  ## can change inds to include subset
+#inds = 1:4
+#inds = c(1,5)
+
+density = .getDens(x,l[inds],"X_q_50")
+q_25 = .getDens(x,l[inds],"X_q_25", "ID")
+q_50 = .getDens(x,l[inds],"X_q_50","ID1")
+q_75 = .getDens(x,l[inds],"X_q_75","ID2")
 
 df2 = cbind(q_25, q_50, q_75)[,c(1,2,3,6,9)]
+df2$ID =as.factor(df2$ID)
+na_ind = is.na(df2$X_q_50) | df2$X_q_50==0
+df2 = df2[!na_ind,]
 
-ggp2<-ggplot(df2, aes(x, X_q_50,  fill=ID, color=ID))+
-  scale_y_continuous(trans='log10')+
-  scale_color_manual(values = c("blue", "black", "green4", "turquoise", "red", "gold4"))+
-  ggtitle("Density plot(20bp sliding window)")+
-  geom_line()+
-  theme_bw()+
-  theme(text = element_text(size=textsize))+
-  xlab("Fragment length(bp)")+
-  ylab("Density") #+
-  #geom_ribbon(aes(ymin=X_q_25, ymax=X_q_75, fill = ID),  alpha=0.1)
+ggp2<-ggplot(df2) + geom_point(aes(x, X_q_50,  fill=ID, color=ID,shape=ID))+ggtitle("Density plot(20bp sliding window)")
+ggp2<-ggp2+scale_y_continuous(trans='log10')
+#ggp2<-ggp2+geom_line()
+ggp2<-ggp2+xlim(smooth,2000)
+ggp2<-ggp2+theme_bw()+theme(text = element_text(size=textsize))+xlab("Fragment length(bp)")+ylab("Density")
+
 ggp2
 
-ggsave("density1.png", plot=ggp2, width = 30, height = 30, units = "cm")
+ggsave("density.png", plot=ggp2, width = 60, height = 30, units = "cm")
 
