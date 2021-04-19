@@ -27,22 +27,26 @@
 * _VarScan2_
 
 `java -jar VarScan.v2.4.4.jar somatic <GERMLINE_SAMPLE.pileup> <TUMOUR_SAMPLE.pileup> <SAMPLE.snp> --min-var-freq 0.01`
+
 `java -jar VarScan.v2.4.4.jar processSomatic <SAMPLE.snp> --min-tumor-freq 0.01 --max-normal-freq 0.00`
+
 `awk 'BEGIN{OFS="\t"} NR!=1 {print $1, $2, $2}' <SAMPLE.snp.Somatic.hc> > <SAMPLE.snp.Somatic.hc.list>`
+
 `bam-readcount -q 2 -f <REFERENCE_hg19.fasta> -l <SAMPLE.snp.Somatic.hc.list> <SAMPLE.bam> > <SAMPLE.somatic_hc.readcount>`
 
 * _Filtering somatic calls from Varscan2_
 
 `java -jar VarScan.v2.4.4.jar fpfilter <SAMPLE.snp.Somatic.hc> <SAMPLE.somatic_hc.readcount> --output-file <SAMPLE_fpfiltered> --min-var-freq 0.01 --min-strandedness 0.0`
-`awk '{if($10 >= 5 && $6 == 0 && $5 + $6 >= 10 && $9 + $10 >= 10 && $18 >=2 && $19 >=2) {print $0}}' <SAMPLE.vcf.snp> | grep -i somatic > <SAMPLE.filtered.vcf.snp>`
+
+`awk '{if($10 >= 5 && $6 == 0 && $5 + $6 >= 10 && $9 + $10 >= 10) {print $0}}' <SAMPLE_fpfiltered> > <SAMPLE_fpfiltered_somatic.snp>`
 
 * _Extraction of shared variants (i.e. variants shared between plasma and tumour)_
 
-`awk 'FNR==NR{a[$1,$2]=$0;next}{if(b=a[$1,$2]){print b}}' <SAMPLE_PLASMA.filtered.vcf.snp> <SAMPLE_TUMOUR.filtered.vcf.snp> > <SAMPLE_PLASMA.shared.vcf.snp>`
+`awk 'FNR==NR{a[$1,$2]=$0;next}{if(b=a[$1,$2]){print b}}' <SAMPLE_PLASMA_fpfiltered_somatic.snp> <SAMPLE_TUMOUR_fpfiltered_somatic.snp> > <SAMPLE_PLASMA_fpfiltered_somatic_shared.snp>`
 
 * _Extraction of unique variants (i.e. variants not shared between plasma and tumour)_
 
-`awk 'FNR==NR{a[$1,$2]++}FNR!=NR && !a[$1,$2]{print}' <SAMPLE_TUMOUR.filtered.vcf.snp> <SAMPLE_PLASMA.filtered.vcf.snp> > <SAMPLE_PLASMA.unique.vcf.snp>`
+`awk 'FNR==NR{a[$1,$2]++}FNR!=NR && !a[$1,$2]{print}' <SAMPLE_TUMOUR_fpfiltered_somatic.snp> <SAMPLE_PLASMA_fpfiltered_somatic.snp> > <SAMPLE_PLASMA_fpfiltered_somatic_unique.snp>`
 
 **3. Extraction of somatic reads**
 
