@@ -26,10 +26,14 @@
 
 * _VarScan2_
 
-`java -jar VarScan.v2.3.9.jar somatic --min-var-freq 0.01 <GERMLINE_SAMPLE.pileup>  <TUMOUR_SAMPLE.pileup>  <SAMPLE.vcf.snp>`
+`java -jar VarScan.v2.4.4.jar somatic <GERMLINE_SAMPLE.pileup> <TUMOUR_SAMPLE.pileup> <SAMPLE.snp> --min-var-freq 0.01`
+`java -jar VarScan.v2.4.4.jar processSomatic <SAMPLE.snp> --min-tumor-freq 0.01 --max-normal-freq 0.00`
+`awk 'BEGIN{OFS="\t"} NR!=1 {print $1, $2, $2}' <SAMPLE.snp.Somatic.hc> > <SAMPLE.snp.Somatic.hc.list>`
+`bam-readcount -q 2 -f <REFERENCE_hg19.fasta> -l <SAMPLE.snp.Somatic.hc.list> <SAMPLE.bam> > <SAMPLE.somatic_hc.readcount>`
 
 * _Filtering somatic calls from Varscan2_
 
+`java -jar VarScan.v2.4.4.jar fpfilter <SAMPLE.snp.Somatic.hc> <SAMPLE.somatic_hc.readcount> --output-file <SAMPLE_fpfiltered> --min-var-freq 0.01 --min-strandedness 0.0`
 `awk '{if($10 >= 5 && $6 == 0 && $5 + $6 >= 10 && $9 + $10 >= 10 && $18 >=2 && $19 >=2) {print $0}}' <SAMPLE.vcf.snp> | grep -i somatic > <SAMPLE.filtered.vcf.snp>`
 
 * _Extraction of shared variants (i.e. variants shared between plasma and tumour)_
