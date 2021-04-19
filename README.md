@@ -52,12 +52,12 @@
 
 These reads were extracted using JAPSA (https://github.com/mdcao/japsa) and somatic reads extraction tool can be deployed using script name jsa.hts.aareads.
 
-`jsa.hts.aareads --input <SAMPLE.bam> --reference <REFERENCE_hg19.fasta>  --vcf <SAMPLE.filtered.vcf.snp> --output <SAMPLE.shared.somatic_reads.sam>`
+`jsa.hts.aareads --input <SAMPLE.bam> --reference <REFERENCE_hg19.fasta>  --vcf <SAMPLE_fpfiltered_somatic.snp> --output <SAMPLE_somatic_reads.sam>`
 
-`samtools view -b -S <SAMPLE.shared.somatic_reads.sam> | samtools sort <SAMPLE.shared.somatic_reads.sam.bam>` 
+`samtools view -b -S <SAMPLE_somatic_reads.sam> | samtools sort -@ 8 -o <SAMPLE_somatic_reads_sorted.bam> && samtools index <SAMPLE_somatic_reads_sorted.bam> <SAMPLE_somatic_reads_sorted.bai> ` 
 
 **4. Annotation of variants with Annovar**
 
-`awk '{print $1,$2,$2,$3,$4 }' <SAMPLE.filtered.vcf.snp> > <SAMPLE.annovarlist.txt>`
+`awk '{print $1,$2,$2,$3,$4 }' <SAMPLE_fpfiltered_somatic.snp> > <SAMPLE.annovarlist.txt>`
 
-`annotate_variation.pl -out <SAMPLE.annotation> -build hg19 <SAMPLE.annovarlist.txt> <DIRECTORY_PATH_TO_humandb_hg19>`
+`perl annotate_variation.pl -out <SAMPLE.annotation> -build hg19 <SAMPLE.annovarlist.txt> <DIRECTORY_PATH_TO_humandb_hg19>`
